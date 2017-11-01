@@ -16,7 +16,6 @@
     2. ...
 *************************************************/
 
-
 #include "stm32f4xx.h"
 #include <rtthread.h>
 //#include <string.h>
@@ -35,10 +34,9 @@
 
 /*********Temp Functions******************/
 #define BACK_LINEAR_VEL -0.1
-extern T_bool ENDOF_TO_POSE;
+extern T_bool g_end_of_to_pose;
 unsigned short BACK_TIME_COUNT = 0;
-float vec0 = 0.0;
-float vec1 = 0.0;
+
 
 /*在分配堆栈空间时，必须要对其*/
 ALIGN(RT_ALIGN_SIZE)
@@ -55,12 +53,7 @@ extern rt_uint8_t start_move;
 void mower_motion_thread(void* parameter)
 {
   rt_uint32_t recved;
-  
-	#ifdef MOTION_CHECK_THREAD_TIME
-  	static u64 MOTION_thread_time_check=0;
-	float temp;
-	#endif
-	
+
 	mag_sensor_initial();
 	
 	rt_thread_delay(1000); //need be removed later
@@ -73,13 +66,13 @@ void mower_motion_thread(void* parameter)
 	
 	rt_kprintf("\r\n Thread Motion Initializing...");
 	
-	rt_kprintf("\r\n is_att_valid == %d", g_att_valid);
+	rt_kprintf("\r\n g_att_valid == %d", g_att_valid);
 	while(g_att_valid < 2)
 	{
 		
 		hw_ms_delay(1);
 	}
-	rt_kprintf("\r\n is_att_valid ok...");hw_ms_delay(1);
+	rt_kprintf("\r\n g_att_valid ok...");hw_ms_delay(1);
 	
 	rt_kprintf("\r\n wait for button press...");
 	while(1 == start_move)
@@ -113,10 +106,10 @@ void mower_motion_thread(void* parameter)
 //    }
 //    else
 //    {
-//       ontoWire(&motion, LEFT_STEERING);
+//       onto_wire(&motion, LEFT_STEERING);
 //       rt_kprintf("INSIDE ONTO WIRE\n");
 //    }
-//		//setVelocity(&motion.tracker, 0.0, 0.0);
+//		//set_velocity(&motion.tracker, 0.0, 0.0);
 //		Motion_Process_Motor_Speed(&motion);
 //		update_motor_control();
 //		
@@ -125,11 +118,12 @@ void mower_motion_thread(void* parameter)
     /*endof onto wire test block*/ 
 
 		/*back to base test*/
+//		T_bool bumper_flag = FALSE;
 //		while(1)
 //		{
 //		rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
 
-//			if(is_att_valid == 2)
+//			if(g_att_valid == 2)
 //			{	
 //			
 //				Motion_Get_Position_2D(&motion.tracker.sense);
@@ -141,8 +135,7 @@ void mower_motion_thread(void* parameter)
 //					Motion_Mag_Line_Test(&motion.tracker);
 //					if( g_Bumper.left == 0)
 //					{
-//						motion.tracker.line_vel = 0;
-//						motion.tracker.angular_vel = 0;
+//						set_velocity(&motion.tracker, 0, 0);
 //						bumper_flag = TRUE;
 //					}
 //				
@@ -160,20 +153,114 @@ void mower_motion_thread(void* parameter)
 //	{
 //		rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
 
-//		if(is_att_valid == 2)
+//		if(g_att_valid == 2)
 //		{	
 //			mag_sensor_update();
 //		}
 //	}
 
 /*endof mag sensor test*/
+
+/*sonar test*/
+//while(1)
+//{
+//	rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
+
+//	if(g_att_valid == 2)
+//	{	
+//	
+//		Motion_Get_Position_2D(&motion.tracker.sense);
+//		Motion_Get_Sensor(&motion.tracker.sense);
+//		
+//		
+//			rt_kprintf("left_dist: %d, right_dist: %d \n", 
+//								(int)(1000*motion.tracker.sense.sonar_l), (int)(1000*motion.tracker.sense.sonar_r) );
+//		
+//		Motion_Process_Motor_Speed(&motion);
+//		update_motor_control();
+//		
+//		update_map_nav();
+//	}
+//}
+/*endof sonar test*/
+
+/*rotate angle test*/
+while(1)
+{
+	rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
+
+	if(g_att_valid == 2)
+	{	
+	
+		Motion_Get_Position_2D(&motion.tracker.sense);
+		Motion_Get_Sensor(&motion.tracker.sense);
+		
+		if(!motion.tracker.path_imu.rotationFinished)
+			rotate_angle(&motion.tracker, 90, LEFT_STEERING);
+		else
+		{
+			motion.tracker.line_vel = 0.2;
+			motion.tracker.angular_vel = 0;
+			BACK_TIME_COUNT++;
+			if(BACK_TIME_COUNT>=200)
+			{
+				BACK_TIME_COUNT = 0;
+				motion.tracker.path_imu.rotationFinished = FALSE;
+			}
+		}
+		
+		
+		Motion_Process_Motor_Speed(&motion);
+		update_motor_control();
+		
+		update_map_nav();
+	}
+}
+/*endof rotate angle test*/
+
+		
+/*deceleration and OA test*/
+//extern T_bool g_obstacle_sensed;
+//extern T_bool g_end_of_arc_reached;
+//while(1)
+//{
+//	rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
+
+//	if(g_att_valid == 2)
+//	{	
+//	
+//		Motion_Get_Position_2D(&motion.tracker.sense);
+//		Motion_Get_Sensor(&motion.tracker.sense);
+//		
+////		deceleration test
+////			if(!g_obstacle_sensed)
+////			{
+////				motion.tracker.angular_vel = 0;
+////				motion.tracker.line_vel = tune_linear_vel(&motion);
+////			}		
+////			else
+////				set_velocity(&motion.tracker,0, 0);
+////		
+//		
+////		OA test
+////			if(g_obstacle_sensed)
+////			{
+////				obstacle_avoidance(&motion, 0.1, 0.5);
+////				if(g_end_of_arc_reached)
+////					set_velocity(&motion.tracker, 0, 0);
+////			}
+////			
+//			
+//		Motion_Process_Motor_Speed(&motion);
+//		update_motor_control();
+//		
+//		update_map_nav();
+//	}
+//}
+/*endof deceleration and OA test*/
 	while (1)
 	{
 		rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
-	#ifdef MOTION_CHECK_THREAD_TIME
-		temp=(float)get_time_diff3(&MOTION_thread_time_check)*1e-3;
-		rt_kprintf("\r\n..>>>:MOTION_thread_time_check_out = %d\r\n",(rt_uint32_t)temp);
-	#endif/*end of MOTION_CHECK_THREAD_TIME*/
 
 		if(g_att_valid == 2)
 		{	
@@ -186,9 +273,8 @@ void mower_motion_thread(void* parameter)
 				BACK_TIME_COUNT ++;						//when outing station
 				if(BACK_TIME_COUNT > 150)
 				{
-					/*lijunhjuan 20171012 changed cuz ontowire*/
 					if(!motion.tracker.path_imu.rotationFinished)
-						rotateVector(&motion.tracker, -1, 0, RIGHT_STEERING, 0);
+						rotate_vector(&motion.tracker, -1, 0, RIGHT_STEERING, 0);
 					else
 					{
 						motion.motion_state = MOTION_STATE_MAGLINE;
@@ -212,13 +298,11 @@ void mower_motion_thread(void* parameter)
 				if(g_Bumper.left == 0)
 				{
 					g_trigger = RIGID_TOUCHED;
-					setVelocity(&motion.tracker, 0, 0);
+					set_velocity(&motion.tracker, 0, 0);
 					Motion_Process_Motor_Speed(&motion);
 					update_motor_control();
 					make_decision(&g_trigger, &g_action, &g_action_params);
 					action_params_print(g_action, g_action_params);
-					vec0 = g_action_params.to_pose_.pos[0]-motion.tracker.sense.pos_x;
-					vec1 = g_action_params.to_pose_.pos[1]-motion.tracker.sense.pos_y;
 				}
 				
 				if(g_trigger == RIGID_TOUCHED)
@@ -229,7 +313,9 @@ void mower_motion_thread(void* parameter)
 					{
 						if(!motion.tracker.path_imu.rotationFinished)
 						{
-							rotateVector(&motion.tracker, vec0, vec1, LEFT_STEERING, 0);
+							rotate_vector(&motion.tracker, g_action_params.to_pose_.pos[0]-motion.tracker.sense.pos_x, 
+                                                           g_action_params.to_pose_.pos[1]-motion.tracker.sense.pos_y, 
+                                                           LEFT_STEERING, 0);
 						}
 						else
 						{
@@ -245,7 +331,7 @@ void mower_motion_thread(void* parameter)
 			{
 				if(!motion.tracker.path_imu.pointReached)
 				{
-					trackPoint(&motion.tracker, g_action_params.to_pose_.pos[0], g_action_params.to_pose_.pos[1]);
+					track_point(&motion.tracker, g_action_params.to_pose_.pos[0], g_action_params.to_pose_.pos[1]);
 				}
 				else
 				{
@@ -257,7 +343,7 @@ void mower_motion_thread(void* parameter)
 
 					if(g_action == DIR_DRIVE)
 					{
-						ENDOF_TO_POSE = TRUE;
+						g_end_of_to_pose = TRUE;
 						motion.motion_state = MOTION_STATE_ZIGZAG;
 					}
 					else if(g_action != TO_POSE)

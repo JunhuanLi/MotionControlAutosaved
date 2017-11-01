@@ -147,8 +147,6 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
 //				{
 //					obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
 //					obj->line_vel = 0;										//obj->target_vel;
-//					
-//					//±Õ»·
 //				}
 //				else if(obj->sense.side_l == MOTION_MAG_LINE_OUTSIDE)
 //				{
@@ -172,9 +170,6 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
 	}
 	else
 	{
-		obj->angular_vel = 0;
-		obj->line_vel = obj->target_vel;		
-
 		if(obj->sense.side_l != obj->sense.side_r)
 		{
 			Mag_Dir_err = obj->sense.value_l - obj->sense.value_r;
@@ -198,7 +193,6 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
 				{
 					obj->angular_vel = (Mag_Dir_P + Mag_Dir_I + Mag_Dir_D) * 0.1;
 				}
-				obj->line_vel = 0.25;
 				
 				if(obj->angular_vel > 0.4)
 				{
@@ -211,36 +205,8 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
 				
 			}
 			
-			/*
-			if(obj->sense.value_l < 15000)
-			{
-				obj->angular_vel = 0.75f*obj->target_vel;
-				obj->line_vel = obj->target_vel;		
-			}
-			else if(obj->sense.value_r < 15000)
-			{
-				obj->angular_vel = -0.75f*obj->target_vel;
-				obj->line_vel = obj->target_vel;	
-			}
-			else if(obj->sense.value_l > 26000 && obj->sense.value_r > 26000)
-			{
-				if(obj->sense.value_l < obj->sense.value_r)
-				{
-					obj->angular_vel = 0.5f*obj->target_vel;//0.1
-					obj->line_vel = obj->target_vel;	
-				}
-				else
-				{
-					obj->angular_vel = -0.5f*obj->target_vel;//-0.1
-					obj->line_vel = obj->target_vel;	
-				}
-			}
-			else
-			{
-				obj->angular_vel = 0.0f;
-				obj->line_vel = obj->target_vel;
-			}
-			*/
+			obj->line_vel = 0.25;
+			
 		}
 	}
         
