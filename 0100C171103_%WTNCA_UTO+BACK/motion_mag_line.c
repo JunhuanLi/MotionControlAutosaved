@@ -131,42 +131,42 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
 	if(obj->sense.side_l == obj->sense.side_r)
 	{
 		/*lijunhjuan 20171012 changed cuz ontowire*/
-		if(obj->sense.value_l >= obj->sense.value_r)
-		{
-			obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
-			obj->line_vel = 0;										//obj->target_vel;
-		}
-		else if(obj->sense.value_r > obj->sense.value_l)
-		{
-			obj->angular_vel = 0.3;								//0.75*obj->target_vel;
-			obj->line_vel = 0;										//obj->target_vel;
-		}
-//			if(obj->path_mag_line.dir == MOTION_MAG_LINE_DIRECT)
-//			{
-//				if(obj->sense.side_l == MOTION_MAG_LINE_INSIDE)
-//				{
-//					obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
-//					obj->line_vel = 0;										//obj->target_vel;
-//				}
-//				else if(obj->sense.side_l == MOTION_MAG_LINE_OUTSIDE)
-//				{
-//					obj->angular_vel = 0.3;								//0.75*obj->target_vel;
-//					obj->line_vel = 0;										//obj->target_vel;
-//				}
-//			}
-//			else
-//			{
-//				if(obj->sense.side_l == MOTION_MAG_LINE_INSIDE)
-//				{
-//					obj->angular_vel = 0.3;								//0.75*obj->target_vel;
-//					obj->line_vel = 0;										//obj->target_vel;					
-//				}
-//				else if(obj->sense.side_l == MOTION_MAG_LINE_OUTSIDE)
-//				{
-//					obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
-//					obj->line_vel = 0;										//obj->target_vel;
-//				}
-//			}
+//		if(obj->sense.value_l >= obj->sense.value_r)
+//		{
+//			obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
+//			obj->line_vel = 0;										//obj->target_vel;
+//		}
+//		else if(obj->sense.value_r > obj->sense.value_l)
+//		{
+//			obj->angular_vel = 0.3;								//0.75*obj->target_vel;
+//			obj->line_vel = 0;										//obj->target_vel;
+//		}
+        if(obj->path_mag_line.dir == MOTION_MAG_LINE_DIRECT)
+        {
+            if(obj->sense.side_l == MOTION_MAG_LINE_INSIDE)
+            {
+                obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
+                obj->line_vel = 0;										//obj->target_vel;
+            }
+            else if(obj->sense.side_l == MOTION_MAG_LINE_OUTSIDE)
+            {
+                obj->angular_vel = 0.3;								//0.75*obj->target_vel;
+                obj->line_vel = 0;										//obj->target_vel;
+            }
+        }
+        else
+        {
+            if(obj->sense.side_l == MOTION_MAG_LINE_INSIDE)
+            {
+                obj->angular_vel = 0.3;								//0.75*obj->target_vel;
+                obj->line_vel = 0;										//obj->target_vel;					
+            }
+            else if(obj->sense.side_l == MOTION_MAG_LINE_OUTSIDE)
+            {
+                obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
+                obj->line_vel = 0;										//obj->target_vel;
+            }
+        }
 	}
 	else
 	{
@@ -213,19 +213,22 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
   if(g_decision.action == ONTO_WIRE)
   {
 		dp_with_exit_dir = g_decision.params.onto_wire.fin_vec[0]*obj->sense.dir_x + g_decision.params.onto_wire.fin_vec[1]*obj->sense.dir_y;
-    dp_with_enter_dir = (-g_decision.params.onto_wire.fin_vec[0]*obj->sense.dir_x) + (-g_decision.params.onto_wire.fin_vec[1]*obj->sense.dir_y);
+        dp_with_enter_dir = (-g_decision.params.onto_wire.fin_vec[0]*obj->sense.dir_x) + (-g_decision.params.onto_wire.fin_vec[1]*obj->sense.dir_y);
 		
 		if( (acosf(dp_with_enter_dir)*57.3 <= 3)&& !ALIGNED_WITH_ENTER_DIR_ONCE)
 		{
+			rt_kprintf("ALIGNED_WITH_ENTER_DIR_ONCE\n");
 			ALIGNED_WITH_ENTER_DIR_ONCE = TRUE;
 		}
 		
 		if( (acosf(dp_with_exit_dir)*57.3 <= 3) && ALIGNED_WITH_ENTER_DIR_ONCE)
 		{
+			rt_kprintf("ALIGNED_WITH_EXIT_DIR_ONCE\n");
 			ALIGNED_WITH_EXIT_DIR_ONCE = TRUE;
-    }
+        }
 		else if( (ALIGNED_WITH_EXIT_DIR_ONCE) && (acosf(dp_with_exit_dir)*57.3 >= DOWN_TO_WIRE_ANGLE_DIFF) )
 		{
+			rt_kprintf("DOWN_TO_WIRE\n");
 			motion.motion_state = MOTION_STATE_ZIGZAG;
 			motion.zigzag.state = T_MOTION_ZIGZAG_STATE_LINE;
 			ALIGNED_WITH_ENTER_DIR_ONCE = FALSE;

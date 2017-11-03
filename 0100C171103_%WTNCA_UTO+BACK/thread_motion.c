@@ -49,7 +49,7 @@ extern T_frontBumper g_Bumper;
 
 extern T_gp_trigger g_trigger;
 extern T_gp_decision g_decision;
-
+extern T_bool g_bumped;
 extern T_motion motion;
 //extern g_gp_decision g_decision.action;
 //extern T_gp_params g_action_params;
@@ -89,7 +89,8 @@ void mower_motion_thread(void* parameter)
 	
 	get_decision(&g_trigger, &g_decision);
 	action_params_print();
-    
+  
+	
     /*test block*/
 //    g_decision.action = ONTO_WIRE;
 //    g_decision.params.onto_wire.fin_vec[0] = 1.0;
@@ -124,9 +125,9 @@ void mower_motion_thread(void* parameter)
 //	}
 
 
-    /*endof test test block*/ 
+    /*endof test block*/ 
 
-/*onto wire test block*/
+    /*onto wire test block*/
 //    g_decision.action = ONTO_WIRE;
 //    g_decision.params.onto_wire.fin_vec[0] = 1.0;
 //    g_decision.params.onto_wire.fin_vec[1] = 0.0;
@@ -215,9 +216,8 @@ void mower_motion_thread(void* parameter)
 //		Motion_Get_Position_2D(&motion.tracker.sense);
 //		Motion_Get_Sensor(&motion.tracker.sense);
 //		
-//		
-//			rt_kprintf("left_dist: %d, right_dist: %d \n", 
-//								(int)(1000*motion.tracker.sense.sonar_l), (int)(1000*motion.tracker.sense.sonar_r) );
+////			rt_kprintf("left_dist: %d, right_dist: %d \n", 
+////								(int)(1000*motion.tracker.sense.sonar_l), (int)(1000*motion.tracker.sense.sonar_r) );
 //		
 //		Motion_Process_Motor_Speed(&motion);
 //		update_motor_control();
@@ -295,7 +295,7 @@ void mower_motion_thread(void* parameter)
 ////					set_velocity(&motion.tracker, 0, 0);
 ////			}
 ////			
-//			
+//		
 //		Motion_Process_Motor_Speed(&motion);
 //		update_motor_control();
 //		
@@ -336,7 +336,7 @@ void mower_motion_thread(void* parameter)
 				
 				processing_bump();
 				
-				if(g_counter>100 && g_Bumper.bumper_state)
+				if(g_counter>100 && g_bumped )
 				{
 					if(!motion.tracker.path_imu.rotationFinished)
 					{
@@ -346,7 +346,7 @@ void mower_motion_thread(void* parameter)
 					}
 					else
 					{
-						motion.tracker.path_imu.rotationFinished = FALSE;
+                        motion.tracker.path_imu.rotationFinished = FALSE;
 						g_counter =0 ;
 						g_Bumper.bumper_state = 0;
 						motion.motion_state = MOTION_STATE_P2P;
@@ -382,8 +382,7 @@ void mower_motion_thread(void* parameter)
 //							motion.motion_state = MOTION_STATE_P2P;
 //						}
 //					}
-//				}
-					
+//				}	
 			}
 			else if(motion.motion_state == MOTION_STATE_P2P)
 			{
@@ -410,7 +409,7 @@ void mower_motion_thread(void* parameter)
 					}
 				}
 			}
-            else if( motion.motion_state == MOTION_STATE_ZIGZAG )
+      else if( motion.motion_state == MOTION_STATE_ZIGZAG )
 			{
 				motion_cover();
 			}

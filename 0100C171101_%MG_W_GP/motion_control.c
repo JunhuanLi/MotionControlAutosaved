@@ -66,13 +66,6 @@ extern unsigned short g_counter;
 extern struct rt_messagequeue mt_mq; 
 extern struct rt_messagequeue gp_mq; 
 
-/*************************************************
-  Function:       // get_decision
-  Description:    // get decision from global planner
-  Input:          // current trigger container and decision container
-  Output:         // none
-  Others:         // none
-*************************************************/
 void get_decision(T_gp_trigger *trigger_ptr, T_gp_decision *decision_ptr)
 {
 	//(1)send the trigger to planner thread
@@ -103,7 +96,7 @@ void processing_bump()
 	get_front_bumper_info(&g_Bumper);
 	if(g_Bumper.left == 0)
 	{
-		g_Bumper.bumper_state = -1;
+		g_Bumper.bumper_state = 1;
 		set_velocity(&motion.tracker, 0, 0);
 		Motion_Process_Motor_Speed(&motion);
 		update_motor_control();
@@ -113,7 +106,7 @@ void processing_bump()
 		action_params_print();
 	}
 	
-	if(g_Bumper.bumper_state == -1)
+	if(g_Bumper.bumper_state)
 	{
 		motion.tracker.line_vel = -0.1;
 		g_counter++;
@@ -160,7 +153,7 @@ void obstacle_avoidance(float linear_vel, float angular_vel)
 {
 	if(g_stage == 0)
 	{
-		if(!motion.tracker.path_imu.rotationFinished) //rotate_angle(&motion.tracker, 90, LEFT_STEERING);
+		if(!motion.tracker.path_imu.rotationFinished)
 			rotate_angle(&motion.tracker, 90, g_decision.params.bypass.pass_side);
 		else
 		{
@@ -182,7 +175,7 @@ void obstacle_avoidance(float linear_vel, float angular_vel)
 	
 	if(g_stage == 2)
 	{
-		if(!motion.tracker.path_imu.rotationFinished) //rotate_angle(&motion.tracker, 90, LEFT_STEERING);
+		if(!motion.tracker.path_imu.rotationFinished)
 			rotate_angle(&motion.tracker, 90, g_decision.params.bypass.pass_side);
 		else
 		{
@@ -335,8 +328,7 @@ void action_params_print()
 		case 1:
 			rt_kprintf("\naction: DIR_DRIVE, params: rot_side(%d), fin_vec(%d, %d)\n", 
 									g_decision.params.dir_drive.rot_side, 
-									(int)(1000*g_decision.params.dir_drive.fin_vec[0]), 
-									(int)(1000*g_decision.params.dir_drive.fin_vec[1]));
+									(int)(1000*g_decision.params.dir_drive.fin_vec[0]), (int)(1000*g_decision.params.dir_drive.fin_vec[1]));
 			break;
 		
 		case 2:
@@ -348,8 +340,7 @@ void action_params_print()
 		case 3:
 			rt_kprintf("\naction: ONTO_WIRE, params: enter_side(%d), laps(%d), fin_vec(%d, %d)\n", 
 									g_decision.params.onto_wire.enter_side, g_decision.params.onto_wire.laps, 
-									(int)(1000*g_decision.params.onto_wire.fin_vec[0]), 
-									(int)(1000*g_decision.params.onto_wire.fin_vec[1]));
+									(int)(1000*g_decision.params.onto_wire.fin_vec[0]), (int)(1000*g_decision.params.onto_wire.fin_vec[1]));
 			break;
 		case 4:
 			rt_kprintf("\naction: BYPASS, params: pass_side(%d)\n", 

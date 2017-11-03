@@ -43,7 +43,6 @@ char mt_msg_pool[64];
 /*在分配堆栈空间时，必须要对其*/
 ALIGN(RT_ALIGN_SIZE)
 char thread_motion_stack[4096];
-
 struct rt_thread thread_motion;
 extern T_frontBumper g_Bumper;
 
@@ -59,6 +58,21 @@ extern rt_uint8_t start_move;
 void mower_motion_thread(void* parameter)
 {	
 	rt_uint32_t recved;
+	
+	rt_err_t result;
+	
+	
+	result =  rt_mq_init(&mt_mq, "mt_mq",
+                       &mt_msg_pool[0],
+                       sizeof(T_gp_trigger),
+                       sizeof(mt_msg_pool),
+                       RT_IPC_FLAG_FIFO);
+	
+  if (result != RT_EOK)
+  {
+		rt_kprintf("Motion control init message queue failed.\n");
+    rt_thread_delay(100); //how long is appro?
+  }
 
 	mag_sensor_initial();
 	
@@ -89,8 +103,7 @@ void mower_motion_thread(void* parameter)
 	
 	get_decision(&g_trigger, &g_decision);
 	action_params_print();
-    
-    /*test block*/
+    /*onto wire test block*/
 //    g_decision.action = ONTO_WIRE;
 //    g_decision.params.onto_wire.fin_vec[0] = 1.0;
 //    g_decision.params.onto_wire.fin_vec[1] = 0.0;
@@ -123,40 +136,6 @@ void mower_motion_thread(void* parameter)
 //		
 //	}
 
-
-    /*endof test test block*/ 
-
-/*onto wire test block*/
-//    g_decision.action = ONTO_WIRE;
-//    g_decision.params.onto_wire.fin_vec[0] = 1.0;
-//    g_decision.params.onto_wire.fin_vec[1] = 0.0;
-    
-//	while(1)
-//	{
-//		rt_event_recv(&sys_event, SYS_EVN_MOTION, RT_EVENT_FLAG_AND|RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &recved);
-//		Motion_Get_Position_2D(&motion.tracker.sense);
-//		Motion_Get_Sensor(&motion.tracker.sense);
-
-
-//    if(motion.motion_state == MOTION_STATE_MAGLINE)
-//		{
-//			motion.tracker.target_vel = 0.4;
-//			motion.tracker.line_vel = 0.4;
-//			
-//			Motion_Mag_Line_Test(&motion.tracker);
-//			
-//			record_track(); // global_planner_record 
-//    }
-//    else
-//    {
-//       onto_wire(LEFT_STEERING, 0.1);
-//       rt_kprintf("INSIDE ONTO WIRE\n");
-//    }
-//		//set_velocity(&motion.tracker, 0.0, 0.0);
-//		Motion_Process_Motor_Speed(&motion);
-//		update_motor_control();
-//		
-//	}
 
     /*endof onto wire test block*/ 
 
@@ -242,10 +221,10 @@ void mower_motion_thread(void* parameter)
 //			rotate_angle(&motion.tracker, 90, LEFT_STEERING);
 //		else
 //		{
-//			motion.tracker.line_vel = 0.1;
+//			motion.tracker.line_vel = 0.2;
 //			motion.tracker.angular_vel = 0;
 //			g_counter++;
-//			if(g_counter>=100)
+//			if(g_counter>=200)
 //			{
 //				g_counter = 0;
 //				motion.tracker.path_imu.rotationFinished = FALSE;
@@ -328,6 +307,10 @@ void mower_motion_thread(void* parameter)
 					}
 				}
 			}
+			else if( motion.motion_state == MOTION_STATE_ZIGZAG )
+			{
+				motion_cover();
+			}
 			else if(motion.motion_state == MOTION_STATE_MAGLINE)
 			{
 				Motion_Mag_Line_Test(&motion.tracker);
@@ -341,8 +324,8 @@ void mower_motion_thread(void* parameter)
 					if(!motion.tracker.path_imu.rotationFinished)
 					{
 						rotate_vector(&motion.tracker, g_decision.params.to_pose.pos[0]-motion.tracker.sense.pos_x, 
-													   g_decision.params.to_pose.pos[1]-motion.tracker.sense.pos_y, 
-													   LEFT_STEERING, 0);
+																												 g_decision.params.to_pose.pos[1]-motion.tracker.sense.pos_y, 
+																												 LEFT_STEERING, 0);
 					}
 					else
 					{
@@ -409,10 +392,6 @@ void mower_motion_thread(void* parameter)
 						
 					}
 				}
-			}
-            else if( motion.motion_state == MOTION_STATE_ZIGZAG )
-			{
-				motion_cover();
 			}
 			
 			//Update Motor Command

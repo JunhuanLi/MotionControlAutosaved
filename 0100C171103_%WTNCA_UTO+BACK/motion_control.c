@@ -44,6 +44,8 @@ int g_left_wheel_sign;
 int g_right_wheel_sign;
 T_motion motion;
 
+#define BACK_TIME_CNT_B4_UTURN 60
+#define BACK_LINEAR_VELOCITY_B4_UTURN -0.2
 #define ONTO_WIRE_ROT_VEL 0.5
 #define ONTO_WIRE_LINEAR_VEL 0.05
 #define ZIGZAG_UTURN_LINEAR_VEL 0.2
@@ -54,6 +56,7 @@ T_motion motion;
 #define ARC_ANGULAR_VEL 0.5
 #define OA_RADIUS 0.5
 
+T_bool g_bumped = FALSE;
 T_bool g_obstacle_sensed = FALSE;
 T_bool g_obstacle_avoidance_finished = FALSE;
 T_bool g_end_of_to_pose;
@@ -85,7 +88,7 @@ void get_decision(T_gp_trigger *trigger_ptr, T_gp_decision *decision_ptr)
 	//(2)receive decision from planner thread
 	if(RT_EOK == rt_mq_recv(&gp_mq, decision_ptr, sizeof(*decision_ptr), RT_WAITING_FOREVER))
 	{
-		//rt_kprintf("[ljh]recv action: %d.\n", decision_ptr->action);
+		rt_kprintf("[ljh]recv action: %d.\n", decision_ptr->action);
 	}
 	//rt_thread_delay(10);
 
@@ -101,9 +104,9 @@ void get_decision(T_gp_trigger *trigger_ptr, T_gp_decision *decision_ptr)
 void processing_bump()
 {
 	get_front_bumper_info(&g_Bumper);
-	if(g_Bumper.left == 0)
+	if(g_Bumper.left == 0 && !g_bumped)
 	{
-		g_Bumper.bumper_state = -1;
+		g_bumped = TRUE;
 		set_velocity(&motion.tracker, 0, 0);
 		Motion_Process_Motor_Speed(&motion);
 		update_motor_control();
@@ -113,7 +116,7 @@ void processing_bump()
 		action_params_print();
 	}
 	
-	if(g_Bumper.bumper_state == -1)
+	if(g_bumped)
 	{
 		motion.tracker.line_vel = -0.1;
 		g_counter++;
@@ -327,31 +330,34 @@ void action_params_print()
 	switch(g_decision.action)
 	{
 		case 0:
+			rt_kprintf("Default Action.\n");
+		break;
+		case 1:
 			rt_kprintf("\naction: TO_POSE, params: pos(%d mm, %d mm), vec(%d, %d)\n", 
 									(int)(1000*g_decision.params.to_pose.pos[0]), (int)(1000*g_decision.params.to_pose.pos[1]), 
 									(int)(1000*g_decision.params.to_pose.vec[0]), (int)(1000*g_decision.params.to_pose.vec[1]));
 			break;
 		
-		case 1:
+		case 2:
 			rt_kprintf("\naction: DIR_DRIVE, params: rot_side(%d), fin_vec(%d, %d)\n", 
 									g_decision.params.dir_drive.rot_side, 
 									(int)(1000*g_decision.params.dir_drive.fin_vec[0]), 
 									(int)(1000*g_decision.params.dir_drive.fin_vec[1]));
 			break;
 		
-		case 2:
+		case 3:
 			rt_kprintf("\naction: U_TURN, params: turn_side(%d), fin_vec(%d, %d)\n", 
 									g_decision.params.u_turn.turn_side, 
 									(int)(1000*g_decision.params.u_turn.fin_vec[0]), (int)(1000*g_decision.params.u_turn.fin_vec[1]));
 			break;
 		
-		case 3:
+		case 4:
 			rt_kprintf("\naction: ONTO_WIRE, params: enter_side(%d), laps(%d), fin_vec(%d, %d)\n", 
 									g_decision.params.onto_wire.enter_side, g_decision.params.onto_wire.laps, 
 									(int)(1000*g_decision.params.onto_wire.fin_vec[0]), 
 									(int)(1000*g_decision.params.onto_wire.fin_vec[1]));
 			break;
-		case 4:
+		case 5:
 			rt_kprintf("\naction: BYPASS, params: pass_side(%d)\n", 
 									g_decision.params.bypass.pass_side);
 			break;
@@ -391,7 +397,7 @@ void heading_control()
 	switch(g_decision.action)
 	{
 		case ONTO_WIRE:
-			track_vector(&motion.tracker, g_decision.params.onto_wire.fin_vec[0], g_decision.params.onto_wire.fin_vec[1], ONTO_WIRE_LINEAR_VEL);
+			track_vector(&motion.tracker, g_decision.params.onto_wire.fin_vec[0], g_decision.params.onto_wire.fin_vec[1], HEADING_CTRL_LINEAR_VEL);
 		break;
 		
 		case U_TURN:
@@ -437,11 +443,13 @@ void onto_wire(T_gp_side enterSide, float rot_vel)
     {
       motion.tracker.line_vel = 0;
       motion.tracker.angular_vel = rot_vel;
+      motion.tracker.path_mag_line.dir = MOTION_MAG_LINE_DIRECT;
     }
     else if(enterSide == RIGHT_STEERING)
     {
       motion.tracker.line_vel = 0;
       motion.tracker.angular_vel = -rot_vel;
+      motion.tracker.path_mag_line.dir = MOTION_MAG_LINE_REVERSE;
     }
   }
   else
@@ -450,6 +458,7 @@ void onto_wire(T_gp_side enterSide, float rot_vel)
 
 MAG_STATUE mag_state;
 const unsigned char MAG_CNT = 3;
+
 void mag_sensor_initial(void)
 {
 	unsigned char i = 0;
@@ -549,13 +558,19 @@ void motion_cover()
 		mag_sensor_update();
 		zigzag_flag++;
 		
-		if((mag_state.left_sensor_change == 1)&&(mag_state.right_sensor_change == 1)&&(zigzag_flag > 150))
+		if((mag_state.left_sensor_change == 1)&&(mag_state.right_sensor_change == 1)&&(zigzag_flag > 50))
 		{		
 			g_trigger = WIRE_SENSED;
 			get_decision(&g_trigger, &g_decision);
       action_params_print();
 			
-			motion.zigzag.state = T_MOTION_ZIGZAG_STATE_BACK;
+			if(g_decision.action == ONTO_WIRE)
+			{
+				change_zigzag_state();
+				zigzag_flag = 0;
+			}
+			else 
+				motion.zigzag.state = T_MOTION_ZIGZAG_STATE_BACK;
 		}
 		else 
 		{
@@ -574,8 +589,8 @@ void motion_cover()
 	else if(motion.zigzag.state == T_MOTION_ZIGZAG_STATE_BACK)
 	{
 		g_counter++;
-		if(g_counter < 25)
-			set_velocity(&motion.tracker, -0.1, 0);
+		if(g_counter < BACK_TIME_CNT_B4_UTURN)
+			set_velocity(&motion.tracker, BACK_LINEAR_VELOCITY_B4_UTURN, 0);
 		else
 		{
 			change_zigzag_state();

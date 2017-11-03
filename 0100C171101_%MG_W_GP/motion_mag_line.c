@@ -17,7 +17,7 @@
 *******************************************************************************/
 
 /* includes *******************************************************************/
-#include "motion_control.h"       
+#include "motion_control.h"       /*da bug*/
 #include "motion_mag_line.h"
 #include "PI.h"
 #include "math.h"
@@ -131,7 +131,7 @@ void Motion_Mag_Line_Test(T_motion_tracker* obj)
 	if(obj->sense.side_l == obj->sense.side_r)
 	{
 		/*lijunhjuan 20171012 changed cuz ontowire*/
-		if(obj->sense.value_l >= obj->sense.value_r)
+		if(obj->sense.value_l > obj->sense.value_r)
 		{
 			obj->angular_vel = -0.3;							//-0.75*obj->target_vel;
 			obj->line_vel = 0;										//obj->target_vel;
