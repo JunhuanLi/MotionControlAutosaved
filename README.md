@@ -15,6 +15,7 @@ Motions and Actions:
 		B2B: BACK TO BASE
 		UT: U TURN
 		OA/BP: OBSTACLE AVOIDANCE/BY PASS
+		BMP: BUMP
 	future works:
 	
 
