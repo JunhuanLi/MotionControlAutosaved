@@ -17,6 +17,12 @@
 *******************************************************************************/
 #include "motion_sense.h"
 
+
+float mtn_window_left[WINDOW_LENGTH] = {0};
+float mtn_window_right[WINDOW_LENGTH] = {0};
+int g_mtn_window_idx = 0;
+int g_mtnsw_call_cnt = 0;
+
 /* macros *********************************************************************/
 /* static variables ***********************************************************/
 static __inline void Tracking_Norm_2D(float* x, float* y)
@@ -44,27 +50,31 @@ void Motion_Get_Position_2D(T_motion_sense* obj)
 	//printf("x: %.4f  y:%.4f \n", obj->pos_x, obj->pos_y);
 }
 
-float mtn_window_left[WINDOW_LENGTH] = {0};
-float mtn_window_right[WINDOW_LENGTH] = {0};
-int g_mtn_window_idx = 0;
 void ultrasonic_sliding_window(T_motion_sense* obj)
 {
+	g_mtnsw_call_cnt++;
 	mtn_window_left[g_mtn_window_idx] = obj->sonar_l;
-	mtn_window_right[g_mtn_window_idx] = obj->sonar_l;
+	mtn_window_right[g_mtn_window_idx] = obj->sonar_r;
 	int i=0;
-	int sum_left=0;
-	int sum_right=0;
+	float sum_left=0;
+	float sum_right=0;
 	for(i=0; i<WINDOW_LENGTH; i++)
 	{
 		sum_left += mtn_window_left[i];
 		sum_right += mtn_window_right[i];
 	}
-	obj->sonar_l = sum_left / WINDOW_LENGTH;
-	obj->sonar_r = sum_right / WINDOW_LENGTH;
 	g_mtn_window_idx++;
-	if(g_mtn_window_idx >= 10)
+
+	if(g_mtnsw_call_cnt>=WINDOW_LENGTH)
+	{
+		obj->sonar_l = sum_left / WINDOW_LENGTH;
+		obj->sonar_r = sum_right / WINDOW_LENGTH;
+		//printf("ld: %.3f,  rd: %.3f\n", obj->sonar_l, obj->sonar_r);
+	}
+	if(g_mtn_window_idx >= WINDOW_LENGTH)
 	{
 		g_mtn_window_idx = 0;
+		//printf("Ultrasonic monitor: ld: %.4f \t\t rd:%.4f\n", obj->sonar_l, obj->sonar_r);
 	}
 	
 }
@@ -78,7 +88,7 @@ void Motion_Get_Sensor(T_motion_sense* obj)
   get_sonar_info(&g_mtn_sonar);
 	obj->sonar_l = g_mtn_sonar.left/1000.0;
 	obj->sonar_r = g_mtn_sonar.right/1000.0;
-	ultrasonic_sliding_window(obj);
+	
 	if(obj->sonar_l >= MTN_SONAR_VALID_TOP)
 		obj->sonar_l = MTN_SONAR_VALID_TOP;
 	if(obj->sonar_l <= MTN_SONAR_VALID_BOT)
@@ -87,6 +97,9 @@ void Motion_Get_Sensor(T_motion_sense* obj)
 		obj->sonar_r = MTN_SONAR_VALID_TOP;
 	if(obj->sonar_r <= MTN_SONAR_VALID_BOT)
 		obj->sonar_r = MTN_SONAR_VALID_BOT;
+	
+	ultrasonic_sliding_window(obj);
+	
 //	if(left < 0)
 //	{
 //		if(left > -MAG_LINE_MIN)

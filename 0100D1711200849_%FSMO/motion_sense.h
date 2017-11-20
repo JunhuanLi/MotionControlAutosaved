@@ -29,7 +29,7 @@
 
 #define MTN_SONAR_VALID_TOP 2.5
 #define MTN_SONAR_VALID_BOT 0
-#define WINDOW_LENGTH 10
+#define WINDOW_LENGTH 30
 
 extern T_sonar g_mtn_sonar;
 
